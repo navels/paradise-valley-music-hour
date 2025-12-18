@@ -150,7 +150,7 @@ def build_rss(
         item = SubElement(channel, "item")
 
         info = parse_episode_info(url)
-        
+
         if info:
             date, ep = info
             title = f"Ep. {ep} — {date.strftime('%b %d, %Y')}"
