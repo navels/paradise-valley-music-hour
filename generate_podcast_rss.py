@@ -28,6 +28,9 @@ DEFAULT_SITE = "https://voiceofvashon.org"
 DEFAULT_TITLE = "Paradise Valley Music Hour"
 DEFAULT_DESC = "Welcome to the Paradise Valley Music Hour, your gateway to the vibrant sounds of the Pacific Northwest and beyond. Join me for an exclusive showcase of the region’s latest talents alongside timeless classics from well-known artists."
 DEFAULT_IMAGE_URL = 'https://navels.github.io/paradise-valley-music-hour/paradise-artwork.jpg'
+DEFAULT_AUTHOR = "Lee Nave"
+DEFAULT_OWNER_NAME = "Lee Nave"
+DEFAULT_OWNER_EMAIL = "spotify-navels@sneakemail.com"
 
 MP3_RE = re.compile(r'href=["\']([^"\']+\.mp3)["\']', re.IGNORECASE)
 
@@ -113,6 +116,9 @@ def build_rss(
     feed_desc: str,
     site_url: str,
     image_url: str | None,
+    author: str,
+    owner_name: str,
+    owner_email: str,
     limit: int | None,
 ) -> str:
     # Sort newest-first by guessed date, then by URL
@@ -140,6 +146,10 @@ def build_rss(
     SubElement(channel, "lastBuildDate").text = format_datetime(dt.datetime.now(dt.timezone.utc))
 
     # iTunes-ish extras (safe even if you don't care)
+    SubElement(channel, "itunes:author").text = author
+    owner = SubElement(channel, "itunes:owner")
+    SubElement(owner, "itunes:name").text = owner_name
+    SubElement(owner, "itunes:email").text = owner_email
     SubElement(channel, "itunes:explicit").text = "no"
     SubElement(channel, "itunes:type").text = "episodic"
     if image_url:
@@ -188,6 +198,9 @@ def main() -> int:
     ap.add_argument("--title", default=DEFAULT_TITLE, help="Podcast title")
     ap.add_argument("--desc", default=DEFAULT_DESC, help="Podcast description")
     ap.add_argument("--image", default=DEFAULT_IMAGE_URL, help="Optional artwork image URL")
+    ap.add_argument("--author", default=DEFAULT_AUTHOR, help="iTunes author")
+    ap.add_argument("--owner-name", default=DEFAULT_OWNER_NAME, help="iTunes owner name")
+    ap.add_argument("--owner-email", default=DEFAULT_OWNER_EMAIL, help="iTunes owner email")
     ap.add_argument("--limit", type=int, default=None, help="Limit number of episodes in the feed")
     args = ap.parse_args()
 
@@ -204,6 +217,9 @@ def main() -> int:
         feed_desc=args.desc,
         site_url=args.site,
         image_url=args.image,
+        author=args.author,
+        owner_name=args.owner_name,
+        owner_email=args.owner_email,
         limit=args.limit,
     )
 
