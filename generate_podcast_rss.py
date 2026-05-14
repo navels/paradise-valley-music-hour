@@ -15,11 +15,15 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import html
+import json
+import os
 import re
 import sys
+import tempfile
 import urllib.parse
 import urllib.request
 from email.utils import format_datetime
+from mutagen.mp3 import MP3
 from xml.etree.ElementTree import Element, SubElement, indent, tostring
 
 
@@ -31,6 +35,7 @@ DEFAULT_IMAGE_URL = 'https://navels.github.io/paradise-valley-music-hour/paradis
 DEFAULT_AUTHOR = "Lee Nave"
 DEFAULT_OWNER_NAME = "Lee Nave"
 DEFAULT_OWNER_EMAIL = "spotify-navels@sneakemail.com"
+DEFAULT_METADATA_PATH = "audio_metadata.json"
 
 MP3_RE = re.compile(r'href=["\']([^"\']+\.mp3)["\']', re.IGNORECASE)
 
@@ -63,6 +68,17 @@ def fetch(url: str) -> str:
     with urllib.request.urlopen(req, timeout=30) as resp:
         charset = resp.headers.get_content_charset() or "utf-8"
         return resp.read().decode(charset, errors="replace")
+
+def fetch_head(url: str) -> dict[str, str]:
+    req = urllib.request.Request(
+        url,
+        method="HEAD",
+        headers={
+            "User-Agent": "Mozilla/5.0 (compatible; podcast-rss-generator/1.0)"
+        },
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return dict(resp.headers.items())
 
 def absolutize(url: str, base: str) -> str:
     return urllib.parse.urljoin(base, url)
@@ -110,6 +126,94 @@ def human_title_from_url(mp3_url: str) -> str:
     name = re.sub(r"\s+", " ", name).strip()
     return name
 
+def format_duration(seconds: int) -> str:
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    secs = seconds % 60
+    if hours:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes}:{secs:02d}"
+
+def load_metadata_cache(path: str) -> dict[str, dict[str, str]]:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        return {}
+
+    if not isinstance(data, dict):
+        raise ValueError(f"Expected object at {path}")
+
+    cache: dict[str, dict[str, str]] = {}
+    for url, value in data.items():
+        if isinstance(url, str) and isinstance(value, dict):
+            cache[url] = {
+                k: str(v) for k, v in value.items() if k in {"duration", "length"}
+            }
+    return cache
+
+def save_metadata_cache(path: str, cache: dict[str, dict[str, str]]) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(dict(sorted(cache.items())), f, indent=2, sort_keys=True)
+        f.write("\n")
+
+def get_enclosure_length(mp3_url: str) -> str | None:
+    try:
+        headers = fetch_head(mp3_url)
+    except Exception:
+        return None
+
+    length = headers.get("Content-Length")
+    if not length:
+        return None
+
+    try:
+        return str(int(length))
+    except ValueError:
+        return None
+
+def download_file(url: str) -> tuple[str, int]:
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (compatible; podcast-rss-generator/1.0)"
+        },
+    )
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            while True:
+                chunk = resp.read(1024 * 1024)
+                if not chunk:
+                    break
+                tmp.write(chunk)
+        return tmp.name, tmp.tell()
+
+def get_itunes_duration(local_mp3_path: str) -> str:
+    audio = MP3(local_mp3_path)
+    return format_duration(round(audio.info.length))
+
+def get_episode_metadata(
+    mp3_url: str,
+    metadata_cache: dict[str, dict[str, str]],
+) -> dict[str, str]:
+    cached = metadata_cache.get(mp3_url)
+    if cached and cached.get("duration") and cached.get("length"):
+        return cached
+
+    local_path = None
+    try:
+        local_path, file_size = download_file(mp3_url)
+        metadata = {
+            "duration": get_itunes_duration(local_path),
+            "length": get_enclosure_length(mp3_url) or str(file_size),
+        }
+    finally:
+        if local_path and os.path.exists(local_path):
+            os.unlink(local_path)
+
+    metadata_cache[mp3_url] = metadata
+    return metadata
+
 def build_rss(
     mp3_urls: list[str],
     feed_title: str,
@@ -119,6 +223,7 @@ def build_rss(
     author: str,
     owner_name: str,
     owner_email: str,
+    metadata_cache: dict[str, dict[str, str]],
     limit: int | None,
 ) -> str:
     # Sort newest-first by guessed date, then by URL
@@ -158,6 +263,7 @@ def build_rss(
 
     for pub_dt, url in items:
         item = SubElement(channel, "item")
+        metadata = get_episode_metadata(url, metadata_cache)
 
         info = parse_episode_info(url)
 
@@ -184,9 +290,13 @@ def build_rss(
         enc = SubElement(item, "enclosure")
         enc.set("url", url)
         enc.set("type", "audio/mpeg")
+        if metadata.get("length"):
+            enc.set("length", metadata["length"])
 
         SubElement(item, "itunes:episode").text = str(ep)
         SubElement(item, "itunes:episodeType").text = "full"
+        if metadata.get("duration"):
+            SubElement(item, "itunes:duration").text = metadata["duration"]
 
     indent(rss, space="  ")
     xml_bytes = tostring(rss, encoding="utf-8", xml_declaration=True)
@@ -202,6 +312,7 @@ def main() -> int:
     ap.add_argument("--author", default=DEFAULT_AUTHOR, help="iTunes author")
     ap.add_argument("--owner-name", default=DEFAULT_OWNER_NAME, help="iTunes owner name")
     ap.add_argument("--owner-email", default=DEFAULT_OWNER_EMAIL, help="iTunes owner email")
+    ap.add_argument("--metadata", default=DEFAULT_METADATA_PATH, help="Path to cached audio metadata JSON")
     ap.add_argument("--limit", type=int, default=None, help="Limit number of episodes in the feed")
     args = ap.parse_args()
 
@@ -212,6 +323,8 @@ def main() -> int:
         print(f"ERROR: No .mp3 links found on {args.page}", file=sys.stderr)
         return 2
 
+    metadata_cache = load_metadata_cache(args.metadata)
+
     rss_xml = build_rss(
         mp3_urls=mp3_urls,
         feed_title=args.title,
@@ -221,9 +334,11 @@ def main() -> int:
         author=args.author,
         owner_name=args.owner_name,
         owner_email=args.owner_email,
+        metadata_cache=metadata_cache,
         limit=args.limit,
     )
 
+    save_metadata_cache(args.metadata, metadata_cache)
     sys.stdout.write(rss_xml)
     return 0
 
