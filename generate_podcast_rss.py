@@ -3,11 +3,11 @@
 Generate a podcast RSS feed from a webpage that contains MP3 links.
 
 Default target:
-  https://voiceofvashon.org/show/paradise-valley-music-hour/
+  http://media.voiceofvashon.org/audio/Paradise/
 
 Usage:
   python3 generate_podcast_rss.py > paradise.xml
-  python3 generate_podcast_rss.py --page https://voiceofvashon.org/audio/Paradise/ > paradise.xml
+  python3 generate_podcast_rss.py --page http://media.voiceofvashon.org/audio/Paradise/ > paradise.xml
 """
 
 from __future__ import annotations
@@ -20,10 +20,10 @@ import sys
 import urllib.parse
 import urllib.request
 from email.utils import format_datetime
-from xml.etree.ElementTree import Element, SubElement, tostring
+from xml.etree.ElementTree import Element, SubElement, indent, tostring
 
 
-DEFAULT_PAGE = "https://voiceofvashon.org/audio/Paradise/"
+DEFAULT_PAGE = "http://media.voiceofvashon.org/audio/Paradise/"
 DEFAULT_SITE = "https://voiceofvashon.org"
 DEFAULT_TITLE = "Paradise Valley Music Hour"
 DEFAULT_DESC = "Welcome to the Paradise Valley Music Hour, your gateway to the vibrant sounds of the Pacific Northwest and beyond. Join me for an exclusive showcase of the region’s latest talents alongside timeless classics from well-known artists."
@@ -188,6 +188,7 @@ def build_rss(
         SubElement(item, "itunes:episode").text = str(ep)
         SubElement(item, "itunes:episodeType").text = "full"
 
+    indent(rss, space="  ")
     xml_bytes = tostring(rss, encoding="utf-8", xml_declaration=True)
     return xml_bytes.decode("utf-8")
 
