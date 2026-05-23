@@ -237,6 +237,15 @@ def build_rss(
     if limit is not None:
         items = items[:limit]
 
+    latest_pub_dt = next(
+        (
+            pub_dt
+            for pub_dt, _ in items
+            if pub_dt.year != 1970
+        ),
+        dt.datetime(1970, 1, 1, tzinfo=dt.timezone.utc),
+    )
+
     rss = Element("rss", {
         "version": "2.0",
         "xmlns:itunes": "http://www.itunes.com/dtds/podcast-1.0.dtd",
@@ -248,7 +257,7 @@ def build_rss(
     SubElement(channel, "description").text = feed_desc
     SubElement(channel, "language").text = "en-us"
     SubElement(channel, "generator").text = "generate_podcast_rss.py"
-    SubElement(channel, "lastBuildDate").text = format_datetime(dt.datetime.now(dt.timezone.utc))
+    SubElement(channel, "lastBuildDate").text = format_datetime(latest_pub_dt)
 
     # iTunes-ish extras (safe even if you don't care)
     SubElement(channel, "itunes:author").text = author
