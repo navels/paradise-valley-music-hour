@@ -2,8 +2,8 @@ name: Update podcast feed
 
 on:
   schedule:
-    # Every Wednesday at 18:00 UTC (adjust as you like)
-    - cron: "0 18 * * 3"
+    # Every day at 18:00 UTC
+    - cron: "0 18 * * *"
   workflow_dispatch: {}
 
 permissions:
