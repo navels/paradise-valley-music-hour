@@ -6,7 +6,7 @@
     <description>Welcome to the Paradise Valley Music Hour, your gateway to the vibrant sounds of the Pacific Northwest and beyond. Join me for an exclusive showcase of the region’s latest talents alongside timeless classics from well-known artists.</description>
     <language>en-us</language>
     <generator>generate_podcast_rss.py</generator>
-    <lastBuildDate>Wed, 03 Jun 2026 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Wed, 24 Jun 2026 00:00:00 +0000</lastBuildDate>
     <itunes:author>Lee Nave</itunes:author>
     <itunes:owner>
       <itunes:name>Lee Nave</itunes:name>
@@ -15,6 +15,18 @@
     <itunes:explicit>no</itunes:explicit>
     <itunes:type>episodic</itunes:type>
     <itunes:image href="https://navels.github.io/paradise-valley-music-hour/paradise-artwork.jpg" />
+    <item>
+      <title>Ep. 132 — Jun 24, 2026</title>
+      <link>http://media.voiceofvashon.org/audio/Paradise/2026-06-24_Music_ParadiseValleyMusicHour_Ep132.mp3</link>
+      <guid>http://media.voiceofvashon.org/audio/Paradise/2026-06-24_Music_ParadiseValleyMusicHour_Ep132.mp3</guid>
+      <description>Paradise Valley Music Hour.
+Originally aired June 24, 2026 on Voice of Vashon.</description>
+      <pubDate>Wed, 24 Jun 2026 00:00:00 +0000</pubDate>
+      <enclosure url="http://media.voiceofvashon.org/audio/Paradise/2026-06-24_Music_ParadiseValleyMusicHour_Ep132.mp3" type="audio/mpeg" length="84576168" />
+      <itunes:episode>132</itunes:episode>
+      <itunes:episodeType>full</itunes:episodeType>
+      <itunes:duration>58:44</itunes:duration>
+    </item>
     <item>
       <title>Ep. 131 — Jun 03, 2026</title>
       <link>http://media.voiceofvashon.org/audio/Paradise/2026-06-03_Music_ParadiseValleyMusicHour_Ep131.mp3</link>
